@@ -1,0 +1,41 @@
+version: '3.9'
+
+# Development override — use with: docker-compose -f docker-compose.dev.yml up
+# Supabase runs locally via: supabase start (in admin/backend/)
+# This file only runs the app containers with hot-reload volumes.
+
+services:
+  api:
+    build:
+      context: ./admin/backend
+      dockerfile: Dockerfile
+      target: builder  # use builder stage for dev deps
+    container_name: ecommerce_api_dev
+    restart: unless-stopped
+    ports:
+      - '4000:4000'
+    env_file:
+      - ./admin/backend/.env
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./admin/backend/src:/app/src
+      - ./admin/backend/prisma:/app/prisma
+    command: npm run dev
+
+  web:
+    image: node:20-alpine
+    container_name: ecommerce_web_dev
+    restart: unless-stopped
+    working_dir: /app
+    ports:
+      - '3000:3000'
+    env_file:
+      - ./admin/frontend/.env.local
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./admin/frontend:/app
+      - /app/node_modules
+      - /app/.next
+    command: npm run dev

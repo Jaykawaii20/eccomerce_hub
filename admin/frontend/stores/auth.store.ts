@@ -1,0 +1,74 @@
+import { create } from 'zustand';
+import { apiClient, setAccessToken, clearAccessToken } from '@/lib/api-client';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+}
+
+interface AuthStore {
+  user: AuthUser | null;
+  isLoading: boolean;
+  login: (email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  checkAuth: () => Promise<void>;
+}
+
+export const useAuthStore = create<AuthStore>((set) => ({
+  user: null,
+  isLoading: false,
+
+  login: async (email: string, password: string) => {
+    set({ isLoading: true });
+    try {
+      // Call Next.js proxy — sets refreshToken cookie on the correct domain
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json?.error?.message ?? 'Login failed.');
+      }
+      setAccessToken(json.data.tokens.accessToken);
+      set({ user: json.data.user, isLoading: false });
+    } catch (error: unknown) {
+      set({ isLoading: false });
+      throw new Error(error instanceof Error ? error.message : 'Login failed.');
+    }
+  },
+
+  logout: async () => {
+    try {
+      const { getAccessToken } = await import('@/lib/api-client');
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getAccessToken() ?? ''}` },
+      });
+    } finally {
+      clearAccessToken();
+      set({ user: null, isLoading: false });
+    }
+  },
+
+  checkAuth: async () => {
+    set({ isLoading: true });
+    try {
+      // Next.js proxy forwards the refreshToken cookie to the backend
+      const res = await fetch('/api/auth/refresh', { method: 'POST' });
+      if (!res.ok) throw new Error('Session expired');
+      const json = await res.json();
+      setAccessToken(json.data.accessToken);
+
+      const { data: meData } = await apiClient.get<{ data: AuthUser }>('/auth/me');
+      set({ user: meData.data, isLoading: false });
+    } catch {
+      clearAccessToken();
+      set({ user: null, isLoading: false });
+    }
+  },
+}));

@@ -1,0 +1,42 @@
+# .claudeignore
+
+# Build artifacts
+.next/
+dist/
+build/
+out/
+
+# Dependencies
+node_modules/
+.pnp/
+.pnp.js
+
+# Caches
+.cache/
+.turbo/
+*.tsbuildinfo
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test output
+coverage/
+.nyc_output/
+
+# Environment files (security too)
+.env
+.env.local
+.env.*.local
+
+# Database files
+*.db
+*.sqlite
+prisma/migrations/
+
+# Media and binaries
+public/images/
+*.png
+*.jpg
+*.gif
+*.mp4
