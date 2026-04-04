@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { DollarSign, ShoppingCart, Users, Package, TrendingUp, TrendingDown } from 'lucide-react';
 import { formatCurrency } from '@/lib/utils';
 import { apiClient } from '@/lib/api-client';
+import { useStoreSettings } from '@/hooks/use-store-settings';
 
 interface Stats {
   revenue: number;
@@ -24,6 +25,7 @@ const defaultStats: Stats = {
 export function DashboardStats() {
   const [stats, setStats] = useState<Stats>(defaultStats);
   const [loading, setLoading] = useState(true);
+  const { currency } = useStoreSettings();
 
   useEffect(() => {
     apiClient.get<{ data: Stats }>('/reports/stats')
@@ -35,7 +37,7 @@ export function DashboardStats() {
   const cards = [
     {
       title: 'Total Revenue',
-      value: formatCurrency(stats.revenue),
+      value: formatCurrency(stats.revenue, currency),
       change: stats.revenueChange,
       icon: DollarSign,
       color: 'text-green-600',

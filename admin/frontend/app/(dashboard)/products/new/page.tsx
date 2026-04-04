@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +24,7 @@ import { Separator } from '@/components/ui/separator';
 import { apiClient } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
 import { useStoreSettings } from '@/hooks/use-store-settings';
-import { ArrowLeft, Save } from 'lucide-react';
+import { ArrowLeft, Save, ImageIcon } from 'lucide-react';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -43,11 +43,28 @@ const schema = z.object({
 
 type FormData = z.infer<typeof schema>;
 
+interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  parentId: string | null;
+}
+
 export default function NewProductPage() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { currency, currencySymbol } = useStoreSettings();
+
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
+  const [featuredImageUrl, setFeaturedImageUrl] = useState('');
+
+  useEffect(() => {
+    apiClient.get('/products/categories').then((res) => {
+      setCategories((res.data as { data: Category[] }).data ?? []);
+    }).catch(() => {});
+  }, []);
 
   const {
     register,
@@ -66,6 +83,12 @@ export default function NewProductPage() {
     },
   });
 
+  function toggleCategory(id: string) {
+    setSelectedCategoryIds((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]
+    );
+  }
+
   const onSubmit = async (data: FormData) => {
     setSaving(true);
     setError(null);
@@ -74,6 +97,8 @@ export default function NewProductPage() {
         ...data,
         price: Math.round(data.price * 100),
         salePrice: data.salePrice ? Math.round(data.salePrice * 100) : undefined,
+        categoryIds: selectedCategoryIds.length > 0 ? selectedCategoryIds : undefined,
+        featuredImageUrl: featuredImageUrl.trim() || undefined,
       };
       await apiClient.post('/products', payload);
       router.push('/products');
@@ -164,6 +189,42 @@ export default function NewProductPage() {
                   {...register('description')}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Featured Image */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Featured Image</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <Label htmlFor="featuredImageUrl">Image URL</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="featuredImageUrl"
+                      placeholder="https://example.com/image.jpg"
+                      className="pl-9"
+                      value={featuredImageUrl}
+                      onChange={(e) => setFeaturedImageUrl(e.target.value)}
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">Paste an image URL. Use Supabase Storage or any public image host.</p>
+              </div>
+              {featuredImageUrl && (
+                <div className="relative w-full h-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={featuredImageUrl}
+                    alt="Preview"
+                    className="w-full h-full object-contain"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -303,6 +364,48 @@ export default function NewProductPage() {
                   onCheckedChange={(v) => setValue('isFeatured', v)}
                 />
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Categories */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Categories</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {categories.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No categories yet.{' '}
+                  <Link href="/categories" className="text-primary underline-offset-4 hover:underline">
+                    Create one
+                  </Link>
+                </p>
+              ) : (
+                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                  {categories.map((cat) => (
+                    <label
+                      key={cat.id}
+                      className="flex items-center gap-2.5 cursor-pointer group"
+                    >
+                      <input
+                        type="checkbox"
+                        id={`cat-${cat.id}`}
+                        checked={selectedCategoryIds.includes(cat.id)}
+                        onChange={() => toggleCategory(cat.id)}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                      <span className="text-sm text-gray-700 group-hover:text-gray-900 select-none">
+                        {cat.name}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              )}
+              {selectedCategoryIds.length > 0 && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {selectedCategoryIds.length} selected
+                </p>
+              )}
             </CardContent>
           </Card>
         </div>

@@ -30,7 +30,7 @@ async function getPageConfig(): Promise<PageConfig | null> {
   try {
     const backendUrl = process.env['BACKEND_URL'] ?? 'http://localhost:4000';
     const res = await fetch(`${backendUrl}/api/v1/page-builder/public`, {
-      next: { revalidate: 60 }, // revalidate every 60 seconds
+      cache: 'no-store', // always fresh so page builder changes show immediately
     });
     if (!res.ok) return null;
     const json = await res.json();

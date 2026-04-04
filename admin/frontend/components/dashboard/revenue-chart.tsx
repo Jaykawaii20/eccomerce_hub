@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { formatCurrency } from '@/lib/utils';
+import { useStoreSettings } from '@/hooks/use-store-settings';
 
 // Placeholder data until /reports/revenue endpoint is implemented
 const placeholderData = [
@@ -15,6 +16,7 @@ const placeholderData = [
 ];
 
 export function RevenueChart() {
+  const { currency } = useStoreSettings();
   return (
     <Card>
       <CardHeader>
@@ -31,8 +33,8 @@ export function RevenueChart() {
             </defs>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
             <XAxis dataKey="month" tick={{ fontSize: 12 }} />
-            <YAxis tickFormatter={(v) => formatCurrency(v)} tick={{ fontSize: 12 }} width={80} />
-            <Tooltip formatter={(value) => [formatCurrency(Number(value)), 'Revenue']} />
+            <YAxis tickFormatter={(v) => formatCurrency(v, currency)} tick={{ fontSize: 12 }} width={80} />
+            <Tooltip formatter={(value) => [formatCurrency(Number(value), currency), 'Revenue']} />
             <Area
               type="monotone"
               dataKey="revenue"

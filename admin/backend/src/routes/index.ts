@@ -12,6 +12,7 @@ import categoryRoutes from './category.routes';
 import reviewRoutes from './review.routes';
 import pageBuilderRoutes from './page-builder.routes';
 import navCountsRoutes from './nav-counts.routes';
+import storefrontRoutes from './storefront.routes';
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use('/categories', categoryRoutes);
 router.use('/reviews', reviewRoutes);
 router.use('/page-builder', pageBuilderRoutes);
 router.use('/nav-counts', navCountsRoutes);
+router.use('/storefront', storefrontRoutes);
 
 export default router;

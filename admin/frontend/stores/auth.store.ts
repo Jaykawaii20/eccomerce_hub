@@ -19,7 +19,7 @@ interface AuthStore {
 
 export const useAuthStore = create<AuthStore>((set) => ({
   user: null,
-  isLoading: false,
+  isLoading: true, // start as true so layout waits for checkAuth() before deciding to redirect
 
   login: async (email: string, password: string) => {
     set({ isLoading: true });

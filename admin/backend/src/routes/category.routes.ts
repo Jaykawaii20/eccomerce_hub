@@ -11,7 +11,7 @@ const router = Router();
 const categorySchema = z.object({
   name: z.string().min(1),
   slug: z.string().min(1),
-  description: z.string().optional(),
+  description: z.string().optional().nullable(),
   parentId: z.string().uuid().optional().nullable(),
   imageUrl: z.string().url().optional().nullable(),
   isActive: z.boolean().default(true),

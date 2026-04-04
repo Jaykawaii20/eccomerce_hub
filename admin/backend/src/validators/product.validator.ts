@@ -18,6 +18,7 @@ export const createProductSchema = z.object({
   metaTitle: z.string().max(255).optional(),
   metaDescription: z.string().max(500).optional(),
   categoryIds: z.array(z.string().uuid()).optional(),
+  featuredImageUrl: z.string().url().optional().nullable(),
   weight: z.number().optional(),
   length: z.number().optional(),
   width: z.number().optional(),

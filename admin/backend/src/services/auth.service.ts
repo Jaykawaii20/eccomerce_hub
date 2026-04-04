@@ -29,7 +29,7 @@ export class AuthService {
     const { data, error } = await supabaseAdmin.auth.admin.createUser({
       email: input.email,
       password: input.password,
-      email_confirm: false,
+      email_confirm: true, // auto-confirm so sign-in works immediately after registration
     });
 
     if (error || !data.user) {

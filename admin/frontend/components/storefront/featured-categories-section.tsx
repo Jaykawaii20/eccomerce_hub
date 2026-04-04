@@ -1,6 +1,7 @@
 interface Category {
   id: string;
   name: string;
+  slug: string;
   imageUrl?: string | null;
   _count?: { products: number };
 }
@@ -20,18 +21,31 @@ const PLACEHOLDER_COLORS = [
   'from-red-400 to-rose-500',
 ];
 
-export function FeaturedCategoriesSection({
+async function fetchCategories(): Promise<Category[]> {
+  try {
+    const backend = process.env['BACKEND_URL'] ?? 'http://localhost:4000';
+    const res = await fetch(`${backend}/api/v1/storefront/categories`, {
+      next: { revalidate: 300 },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data ?? []) as Category[];
+  } catch {
+    return [];
+  }
+}
+
+export async function FeaturedCategoriesSection({
   title = 'Shop by Category',
   subtitle = 'Find exactly what you are looking for',
-  categories = [],
+  categories: propCategories,
 }: FeaturedCategoriesProps) {
-  if (categories.length === 0) {
-    // Show placeholder tiles
-    categories = Array.from({ length: 6 }, (_, i) => ({
-      id: `placeholder-${i}`,
-      name: ['Electronics', 'Clothing', 'Home & Garden', 'Sports', 'Beauty', 'Books'][i] ?? 'Category',
-    }));
-  }
+  const categories = (propCategories && propCategories.length > 0)
+    ? propCategories
+    : await fetchCategories();
+
+  // Don't render empty section
+  if (categories.length === 0) return null;
 
   return (
     <section className="py-16 bg-gray-50">
@@ -45,7 +59,7 @@ export function FeaturedCategoriesSection({
           {categories.slice(0, 6).map((cat, i) => (
             <a
               key={cat.id}
-              href={`/shop?category=${cat.id}`}
+              href={`/store/products?category=${cat.slug}`}
               className="group flex flex-col items-center gap-3 p-4 rounded-2xl bg-white shadow-sm hover:shadow-md transition-shadow"
             >
               <div

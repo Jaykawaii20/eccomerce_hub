@@ -16,10 +16,10 @@ export const apiRateLimit = rateLimit({
   },
 });
 
-// Strict rate limit for auth endpoints
+// Strict rate limit for auth endpoints (relaxed in dev so testing doesn't get blocked)
 export const authRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env['NODE_ENV'] === 'production' ? 10 : 200,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (_req, res) => {

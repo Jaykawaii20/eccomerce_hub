@@ -3,6 +3,7 @@ import { ShoppingCart, Star } from 'lucide-react';
 interface Product {
   id: string;
   name: string;
+  slug: string;
   price: number;
   salePrice?: number | null;
   featuredImageUrl?: string | null;
@@ -16,25 +17,37 @@ interface FeaturedProductsProps {
   showBadge?: boolean;
 }
 
-function formatPrice(cents: number) {
-  return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(cents / 100);
+async function fetchFeaturedProducts(): Promise<Product[]> {
+  try {
+    const backend = process.env['BACKEND_URL'] ?? 'http://localhost:4000';
+    const res = await fetch(
+      `${backend}/api/v1/storefront/products?featured=true&pageSize=8&sort=createdAt:desc`,
+      { next: { revalidate: 300 } }
+    );
+    if (!res.ok) return [];
+    const json = await res.json();
+    return (json.data ?? []) as Product[];
+  } catch {
+    return [];
+  }
 }
 
-export function FeaturedProductsSection({
+function formatPrice(cents: number) {
+  return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(cents / 100);
+}
+
+export async function FeaturedProductsSection({
   title = 'Featured Products',
   subtitle = 'Hand-picked items just for you',
-  products = [],
+  products: propProducts,
   showBadge = true,
 }: FeaturedProductsProps) {
-  if (products.length === 0) {
-    products = Array.from({ length: 8 }, (_, i) => ({
-      id: `placeholder-${i}`,
-      name: ['Wireless Headphones', 'Smart Watch', 'Running Shoes', 'Laptop Bag', 'Coffee Maker', 'Yoga Mat', 'Sunglasses', 'Backpack'][i] ?? 'Product',
-      price: [9999, 29999, 7999, 4999, 8999, 3999, 5999, 6999][i] ?? 9999,
-      salePrice: i % 3 === 0 ? [7999, 24999, 5999, null, null, null, null, null][i] : null,
-      isFeatured: i < 3,
-    }));
-  }
+  const products = (propProducts && propProducts.length > 0)
+    ? propProducts
+    : await fetchFeaturedProducts();
+
+  // Don't render if no real products
+  if (products.length === 0) return null;
 
   return (
     <section className="py-16 bg-white">
@@ -44,14 +57,14 @@ export function FeaturedProductsSection({
             <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">{title}</h2>
             {subtitle && <p className="mt-2 text-gray-500">{subtitle}</p>}
           </div>
-          <a href="/shop" className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors">
+          <a href="/store/products" className="text-sm font-semibold text-orange-500 hover:text-orange-600 transition-colors">
             View all →
           </a>
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
           {products.map((product) => {
-            const hasDiscount = product.salePrice !== null && product.salePrice !== undefined;
+            const hasDiscount = product.salePrice != null && product.salePrice < product.price;
             const discountPct = hasDiscount
               ? Math.round(((product.price - (product.salePrice ?? 0)) / product.price) * 100)
               : 0;
@@ -59,7 +72,7 @@ export function FeaturedProductsSection({
             return (
               <a
                 key={product.id}
-                href={`/shop/${product.id}`}
+                href={`/store/products/${product.slug}`}
                 className="group rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg transition-shadow bg-white"
               >
                 {/* Image */}
@@ -114,10 +127,10 @@ export function FeaturedProductsSection({
                       <span className="text-base font-bold text-gray-900">{formatPrice(product.price)}</span>
                     )}
                   </div>
-                  <button className="mt-3 w-full py-2 rounded-lg bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2">
+                  <div className="mt-3 w-full py-2 rounded-lg bg-orange-500 text-white text-sm font-semibold flex items-center justify-center gap-2">
                     <ShoppingCart className="h-4 w-4" />
-                    Add to Cart
-                  </button>
+                    View Product
+                  </div>
                 </div>
               </a>
             );

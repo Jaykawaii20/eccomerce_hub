@@ -30,7 +30,7 @@ interface CustomerDetail {
   isActive: boolean;
   emailVerified: boolean;
   createdAt: string;
-  orders: Array<{
+  orders?: Array<{
     id: string;
     orderNumber: string;
     status: string;
@@ -38,7 +38,7 @@ interface CustomerDetail {
     currency: string;
     createdAt: string;
   }>;
-  addresses: Array<{
+  addresses?: Array<{
     id: string;
     type: string;
     line1: string;
@@ -120,7 +120,7 @@ export default function CustomerDetailPage() {
               </div>
               <div className="flex items-center gap-2 text-muted-foreground">
                 <ShoppingBag className="h-4 w-4" />
-                <span>{customer.orders.length} orders</span>
+                <span>{(customer.orders ?? []).length} orders</span>
               </div>
               <div className="pt-2 space-y-1.5">
                 <div className="flex items-center gap-2">
@@ -142,13 +142,13 @@ export default function CustomerDetailPage() {
             </CardContent>
           </Card>
 
-          {customer.addresses.length > 0 && (
+          {(customer.addresses ?? []).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Addresses</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
-                {customer.addresses.map((a) => (
+                {(customer.addresses ?? []).map((a) => (
                   <div key={a.id} className="space-y-0.5">
                     <p className="font-medium capitalize">{a.type.toLowerCase()}</p>
                     <p className="text-muted-foreground">
@@ -179,10 +179,10 @@ export default function CustomerDetailPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {customer.orders.length === 0 ? (
+                  {(customer.orders ?? []).length === 0 ? (
                     <TableEmpty>No orders yet.</TableEmpty>
                   ) : (
-                    customer.orders.map((o) => (
+                    (customer.orders ?? []).map((o) => (
                       <TableRow key={o.id}>
                         <TableCell className="font-mono font-medium">#{o.orderNumber}</TableCell>
                         <TableCell>

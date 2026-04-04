@@ -267,6 +267,7 @@ export default function BuilderPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [previewKey, setPreviewKey] = useState(0);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const fetchConfig = useCallback(async () => {
@@ -291,6 +292,7 @@ export default function BuilderPage() {
     try {
       await apiClient.post('/page-builder', config);
       setSaved(true);
+      setPreviewKey((k) => k + 1); // increment triggers a single iframe reload
       setTimeout(() => setSaved(false), 3000);
     } finally {
       setSaving(false);
@@ -501,10 +503,10 @@ export default function BuilderPage() {
 
           <div className="flex-1 overflow-hidden">
             <iframe
-              src="/store"
+              src={`/store?preview=${previewKey}`}
               className="w-full h-full border-0"
               title="Storefront Preview"
-              key={saved ? 'saved' : 'preview'}
+              key={previewKey}
             />
           </div>
         </div>
