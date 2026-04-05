@@ -156,8 +156,26 @@ export default function ProductsPage() {
                           className="h-10 w-10 rounded object-cover"
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded bg-muted flex items-center justify-center">
-                          <ImageOff className="h-4 w-4 text-muted-foreground" />
+                        <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-5 w-5 text-gray-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M3 7v10c0 1.104.896 2 2 2h14c1.104 0 2-.896 2-2V7c0-1.104-.896-2-2-2H5c-1.104 0-2 .896-2 2z"
+                            />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M3 7l6 6 4-4 6 6"
+                            />
+                          </svg>
                         </div>
                       )}
                     </TableCell>

@@ -52,7 +52,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
             </Button>
             
             {/* Search - hidden on mobile */}
-            <div className="hidden md:block w-96">
+            {/* <div className="hidden md:block w-96">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -60,7 +60,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                   className="pl-9 bg-muted/50 border-0 focus-visible:ring-1"
                 />
               </div>
-            </div>
+            </div> */}
           </div>
 
           {/* Right section */}

@@ -76,12 +76,28 @@ export class ProductRepository implements IProductRepository {
   }
 
   async create(data: CreateProductInput): Promise<Product> {
-    const { categoryIds, ...productData } = data;
+    const { categoryIds, sku, ...productData } = data;
 
     return prisma.$transaction(async (tx) => {
+      let newSku = sku;
+
+      // If SKU is provided, ensure uniqueness
+      if (sku) {
+        let exists = await tx.product.findUnique({ where: { sku } });
+        let counter = 1;
+
+        while (exists) {
+          newSku = `${sku}-${counter}`;
+          exists = await tx.product.findUnique({ where: { sku: newSku } });
+          counter++;
+        }
+      }
+
+      // Create product
       const product = await tx.product.create({
         data: {
           ...productData,
+          ...(newSku && { sku: newSku }),
           weight: productData.weight !== undefined ? productData.weight : undefined,
           length: productData.length !== undefined ? productData.length : undefined,
           width: productData.width !== undefined ? productData.width : undefined,
@@ -89,6 +105,7 @@ export class ProductRepository implements IProductRepository {
         },
       });
 
+      // Assign categories if provided
       if (categoryIds && categoryIds.length > 0) {
         await tx.productCategory.createMany({
           data: categoryIds.map((categoryId) => ({
@@ -103,16 +120,35 @@ export class ProductRepository implements IProductRepository {
   }
 
   async update(id: string, data: UpdateProductInput): Promise<Product> {
-    const { categoryIds, ...productData } = data;
+    const { categoryIds, sku, ...productData } = data;
 
     return prisma.$transaction(async (tx) => {
+
+      let newSku = sku;
+
+      // Check if SKU is provided and if it's already taken by another product
+      if (sku) {
+        let exists = await tx.product.findUnique({ where: { sku } });
+        let counter = 1;
+
+        // Keep generating a new SKU until it's unique
+        while (exists && exists.id !== id) {
+          newSku = `${sku}-${counter}`;
+          exists = await tx.product.findUnique({ where: { sku: newSku } });
+          counter++;
+        }
+      }
+
+      // Update the product
       const product = await tx.product.update({
         where: { id },
         data: {
           ...productData,
+          ...(newSku && { sku: newSku }),
         },
       });
 
+      // Update categories if provided
       if (categoryIds !== undefined) {
         await tx.productCategory.deleteMany({ where: { productId: id } });
         if (categoryIds.length > 0) {
