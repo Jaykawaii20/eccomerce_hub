@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { apiClient, setAccessToken, clearAccessToken } from '@/lib/api-client';
+import { clearSupabaseSession, setSupabaseSession } from '@/lib/supabase';
 
 interface AuthUser {
   id: string;
@@ -35,6 +36,14 @@ export const useAuthStore = create<AuthStore>((set) => ({
         throw new Error(json?.error?.message ?? 'Login failed.');
       }
       setAccessToken(json.data.tokens.accessToken);
+
+      // set supabase session with the tokens from backend
+      try {
+        await setSupabaseSession(json.data.tokens.accessToken, json.data.tokens.refreshToken);
+      } catch (supabaseError) {
+        console.error('Failed to get Supabase session:', supabaseError);
+      }
+
       set({ user: json.data.user, isLoading: false });
     } catch (error: unknown) {
       set({ isLoading: false });
@@ -51,6 +60,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
       });
     } finally {
       clearAccessToken();
+
+      // clear supabase session on logout
+      try {
+        await clearSupabaseSession();
+      } catch (supabaseError) {
+        console.error('Failed to clear Supabase session:', supabaseError);
+      }
       set({ user: null, isLoading: false });
     }
   },
@@ -64,10 +80,23 @@ export const useAuthStore = create<AuthStore>((set) => ({
       const json = await res.json();
       setAccessToken(json.data.accessToken);
 
+      try {
+        await setSupabaseSession(json.data.accessToken, json.data.refreshToken);
+        console.log('Supabase session restored successfully');
+      } catch (supabaseError) {
+        console.error('Failed to restore Supabase session:', supabaseError);
+      }
+
       const { data: meData } = await apiClient.get<{ data: AuthUser }>('/auth/me');
       set({ user: meData.data, isLoading: false });
     } catch {
       clearAccessToken();
+
+      try {
+        await clearSupabaseSession();
+      } catch (supabaseError) {
+        console.error('Failed to clear Supabase session during auth check:', supabaseError);
+      }
       set({ user: null, isLoading: false });
     }
   },

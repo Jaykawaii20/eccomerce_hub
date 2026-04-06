@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,7 +24,8 @@ import { Separator } from '@/components/ui/separator';
 import { apiClient } from '@/lib/api-client';
 import { slugify } from '@/lib/utils';
 import { useStoreSettings } from '@/hooks/use-store-settings';
-import { ArrowLeft, Save, ImageIcon } from 'lucide-react';
+import { ArrowLeft, Save, ImageIcon, PencilIcon } from 'lucide-react';
+import { uploadProductImage } from '@/lib/supabase-storage';
 
 const schema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -59,11 +60,41 @@ export default function NewProductPage() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
   const [featuredImageUrl, setFeaturedImageUrl] = useState('');
+  const [isFileAttached, setIsFileAttached] = useState(false);   // tracks if user uploaded a file
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = async (file: File | null) => {
+    if (!file) return;
+
+    const tempUrl = URL.createObjectURL(file);
+    setFeaturedImageUrl(tempUrl);
+
+    try {
+      const url = await uploadProductImage(file);
+      setFeaturedImageUrl(url);
+    } catch (err) {
+      console.error(err);
+      alert("Upload failed");
+    }
+  };
+
+
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileChange(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
 
   useEffect(() => {
     apiClient.get('/products/categories').then((res) => {
       setCategories((res.data as { data: Category[] }).data ?? []);
-    }).catch(() => {});
+    }).catch(() => { });
   }, []);
 
   const {
@@ -199,32 +230,57 @@ export default function NewProductPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-1">
-                <Label htmlFor="featuredImageUrl">Image URL</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <ImageIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      id="featuredImageUrl"
-                      placeholder="https://example.com/image.jpg"
-                      className="pl-9"
-                      value={featuredImageUrl}
-                      onChange={(e) => setFeaturedImageUrl(e.target.value)}
-                    />
-                  </div>
+                <Label>Upload Product Image</Label>
+
+                {/* Drag & Drop Box */}
+                <div
+                  className="relative w-full h-40 rounded-lg border-2 border-dashed border-gray-300 bg-gray-50 flex items-center justify-center cursor-pointer hover:border-gray-400"
+                  onClick={() => fileInputRef.current?.click()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0];
+                    handleFileChange(file);
+                  }}
+                  onDragOver={(e) => e.preventDefault()}
+                >
+                  {featuredImageUrl ? (
+                    <>
+                      <img
+                        src={featuredImageUrl}
+                        alt="Preview"
+                        className="w-full h-full object-contain rounded-lg"
+                      />
+                      <button
+                        type="button"
+                        className="absolute top-2 right-2 bg-white p-1 rounded-full shadow"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          fileInputRef.current?.click();
+                        }}
+                      >
+                        ✏️
+                      </button>
+                    </>
+                  ) : (
+                    <p className="text-gray-400 text-sm text-center px-4">
+                      Drag & drop image here or click to upload
+                    </p>
+                  )}
                 </div>
-                <p className="text-xs text-muted-foreground">Paste an image URL. Use Supabase Storage or any public image host.</p>
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  ref={fileInputRef}
+                  onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                />
+
+                {/* Optional: Hidden input for backend */}
+                {isFileAttached && (
+                  <input type="hidden" name="featuredImage" value={featuredImageUrl!} />
+                )}
               </div>
-              {featuredImageUrl && (
-                <div className="relative w-full h-40 rounded-lg overflow-hidden border border-gray-200 bg-gray-50">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={featuredImageUrl}
-                    alt="Preview"
-                    className="w-full h-full object-contain"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                  />
-                </div>
-              )}
             </CardContent>
           </Card>
 
