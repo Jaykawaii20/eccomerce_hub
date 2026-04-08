@@ -145,10 +145,11 @@ router.get('/products/:slug', asyncHandler(async (req, res) => {
   });
 
   if (!product) {
-    return res.status(404).json({
+    res.status(404).json({
       success: false,
       error: { code: 'PRODUCT_NOT_FOUND', message: 'Product not found.' },
     });
+    return;
   }
 
   res.json({ success: true, data: product });
@@ -214,7 +215,7 @@ const checkoutSchema = z.object({
 router.post('/checkout', asyncHandler(async (req, res) => {
   const parsed = checkoutSchema.safeParse(req.body);
   if (!parsed.success) {
-    return res.status(400).json({
+    res.status(400).json({
       success: false,
       error: {
         code: 'VALIDATION_ERROR',
@@ -222,6 +223,7 @@ router.post('/checkout', asyncHandler(async (req, res) => {
         details: parsed.error.flatten(),
       },
     });
+    return;
   }
 
   const { items, paymentMethod, shippingAddress, billingAddress, customerEmail, customerNote, couponCode } = parsed.data;
@@ -266,10 +268,11 @@ router.post('/checkout', asyncHandler(async (req, res) => {
   for (const item of items) {
     const product = products.find((p) => p.id === item.productId);
     if (!product) {
-      return res.status(422).json({
+      res.status(422).json({
         success: false,
         error: { code: 'PRODUCT_UNAVAILABLE', message: `Product ${item.productId} is not available.` },
       });
+      return;
     }
 
     let unitPrice = product.salePrice ?? product.price;
@@ -278,25 +281,28 @@ router.post('/checkout', asyncHandler(async (req, res) => {
     if (item.variantId) {
       const variant = product.variants.find((v) => v.id === item.variantId);
       if (!variant) {
-        return res.status(422).json({
+        res.status(422).json({
           success: false,
           error: { code: 'VARIANT_NOT_FOUND', message: 'Variant not found.' },
         });
+        return;
       }
       unitPrice = variant.salePrice ?? variant.price;
       sku = variant.sku;
 
       if (product.manageStock && variant.stockQuantity < item.quantity && !product.allowBackorders) {
-        return res.status(422).json({
+        res.status(422).json({
           success: false,
           error: { code: 'INSUFFICIENT_STOCK', message: `Insufficient stock for ${product.name}.` },
         });
+        return;
       }
     } else if (product.manageStock && product.stockQuantity < item.quantity && !product.allowBackorders) {
-      return res.status(422).json({
+      res.status(422).json({
         success: false,
         error: { code: 'INSUFFICIENT_STOCK', message: `Insufficient stock for ${product.name}.` },
       });
+      return;
     }
 
     const totalPrice = unitPrice * item.quantity;
@@ -554,10 +560,11 @@ router.get('/orders/:ref', asyncHandler(async (req, res) => {
   });
 
   if (!order) {
-    return res.status(404).json({
+    res.status(404).json({
       success: false,
       error: { code: 'ORDER_NOT_FOUND', message: 'Order not found.' },
     });
+    return;
   }
 
   res.json({ success: true, data: order });

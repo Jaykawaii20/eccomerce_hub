@@ -6,7 +6,7 @@ import {
   updateProductSchema,
   listProductsSchema,
 } from '../validators/product.validator';
-import { sendSuccess, sendError, sendPaginated } from '../utils/response';
+import { sendSuccess, sendError } from '../utils/response';
 import { asyncHandler } from '../utils/async-handler';
 import { AuthenticatedRequest } from '../types';
 import { redis } from '../config/redis';
