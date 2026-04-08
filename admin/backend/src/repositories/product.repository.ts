@@ -2,8 +2,22 @@ import { Product, Category, Prisma } from '@prisma/client';
 import { prisma } from '../config/prisma';
 import { CreateProductInput, UpdateProductInput, ListProductsInput } from '../validators/product.validator';
 
+export interface ProductListItem {
+  id: string;
+  name: string;
+  slug: string;
+  sku: string | null;
+  status: Product['status'];
+  type: Product['type'];
+  price: number;
+  salePrice: number | null;
+  stockQuantity: number;
+  featuredImageUrl: string | null;
+  createdAt: Date;
+}
+
 export interface IProductRepository {
-  findAll(params: ListProductsInput): Promise<{ data: Product[]; total: number }>;
+  findAll(params: ListProductsInput): Promise<{ data: ProductListItem[]; total: number }>;
   findById(id: string): Promise<Product | null>;
   findBySlug(slug: string): Promise<Product | null>;
   create(data: CreateProductInput): Promise<Product>;
@@ -13,7 +27,7 @@ export interface IProductRepository {
 }
 
 export class ProductRepository implements IProductRepository {
-  async findAll(params: ListProductsInput): Promise<{ data: Product[]; total: number }> {
+  async findAll(params: ListProductsInput): Promise<{ data: ProductListItem[]; total: number }> {
     const { page, pageSize, status, type, search, categoryId, sort } = params;
     const skip = (page - 1) * pageSize;
 
@@ -38,14 +52,18 @@ export class ProductRepository implements IProductRepository {
         skip,
         take: pageSize,
         orderBy,
-        include: {
-          images: {
-            take: 1,
-            orderBy: { sortOrder: 'asc' },
-          },
-          categories: {
-            include: { category: true },
-          },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          sku: true,
+          status: true,
+          type: true,
+          price: true,
+          salePrice: true,
+          stockQuantity: true,
+          featuredImageUrl: true,
+          createdAt: true,
         },
       }),
       prisma.product.count({ where }),
@@ -70,25 +88,34 @@ export class ProductRepository implements IProductRepository {
   }
 
   async findBySlug(slug: string): Promise<Product | null> {
-    return prisma.product.findUnique({
-      where: { slug, deletedAt: null },
-    });
+    // Use findFirst (not findUnique) so we can search across ALL rows,
+    // including soft-deleted ones — the DB unique constraint covers every row.
+    return prisma.product.findFirst({ where: { slug } });
   }
 
   async create(data: CreateProductInput): Promise<Product> {
     const { categoryIds, sku, ...productData } = data;
 
     return prisma.$transaction(async (tx) => {
-      let newSku = sku;
-
-      // If SKU is provided, ensure uniqueness
-      if (sku) {
-        let exists = await tx.product.findUnique({ where: { sku } });
+      // ── Slug uniqueness (across ALL rows, including soft-deleted) ──────────
+      let newSlug = productData.slug;
+      const slugTaken = await tx.product.findFirst({ where: { slug: newSlug } });
+      if (slugTaken) {
         let counter = 1;
+        while (await tx.product.findFirst({ where: { slug: `${productData.slug}-${counter}` } })) {
+          counter++;
+        }
+        newSlug = `${productData.slug}-${counter}`;
+      }
 
-        while (exists) {
+      // ── SKU uniqueness ─────────────────────────────────────────────────────
+      let newSku = sku;
+      if (sku) {
+        let skuTaken = await tx.product.findUnique({ where: { sku } });
+        let counter = 1;
+        while (skuTaken) {
           newSku = `${sku}-${counter}`;
-          exists = await tx.product.findUnique({ where: { sku: newSku } });
+          skuTaken = await tx.product.findUnique({ where: { sku: newSku } });
           counter++;
         }
       }
@@ -97,6 +124,7 @@ export class ProductRepository implements IProductRepository {
       const product = await tx.product.create({
         data: {
           ...productData,
+          slug: newSlug,
           ...(newSku && { sku: newSku }),
           weight: productData.weight !== undefined ? productData.weight : undefined,
           length: productData.length !== undefined ? productData.length : undefined,

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Package, ChevronRight, ShoppingBag, LogIn } from 'lucide-react';
+import { Package, ChevronRight, ShoppingBag, LogIn, AlertCircle, RefreshCw } from 'lucide-react';
 import { useCustomerAuth } from '../../context/customer-auth-context';
+import { useAuthModal } from '../../context/auth-modal-context';
 import { ShopNavbar } from '../../components/shop-navbar';
 
 const BACKEND = process.env['NEXT_PUBLIC_BACKEND_URL'] ?? 'http://localhost:4000';
@@ -39,27 +40,39 @@ interface OrderSummary {
 }
 
 export default function MyOrdersPage() {
-  const { customer, token, loading: authLoading } = useCustomerAuth();
+  const { customer, loading: authLoading, authFetch, logout } = useCustomerAuth();
+  const { openAuthModal } = useAuthModal();
   const [orders, setOrders] = useState<OrderSummary[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<'session_expired' | 'network' | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
-    if (!customer || !token) {
+    if (!customer) {
       setLoading(false);
       return;
     }
 
-    fetch(`${BACKEND}/api/v1/storefront/orders`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
-      .then((r) => r.json())
-      .then((json: { success: boolean; data: OrderSummary[] }) => {
+    setLoading(true);
+    setFetchError(null);
+
+    authFetch(`${BACKEND}/api/v1/storefront/orders`)
+      .then(async (res) => {
+        if (res.status === 401) {
+          // Token expired and refresh failed — session is gone
+          setFetchError('session_expired');
+          return;
+        }
+        if (!res.ok) {
+          setFetchError('network');
+          return;
+        }
+        const json = await res.json() as { success: boolean; data: OrderSummary[] };
         if (json.success) setOrders(json.data);
       })
-      .catch(() => {})
+      .catch(() => setFetchError('network'))
       .finally(() => setLoading(false));
-  }, [customer, token, authLoading]);
+  }, [customer, authLoading, authFetch]);
 
   if (authLoading) return null;
 
@@ -71,12 +84,20 @@ export default function MyOrdersPage() {
           <LogIn className="h-16 w-16 text-orange-300 mx-auto mb-4" />
           <h2 className="text-xl font-bold text-gray-900">Sign in to view your orders</h2>
           <p className="text-gray-500 text-sm mt-2">You need to be signed in to view order history.</p>
-          <a
-            href="/store/auth/login?redirect=/store/account/orders"
-            className="mt-6 inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 transition-colors"
-          >
-            Sign In
-          </a>
+          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
+            <button
+              onClick={() => openAuthModal({ tab: 'login', redirect: '/store/account/orders' })}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 transition-colors"
+            >
+              <LogIn className="h-4 w-4" /> Sign In
+            </button>
+            <button
+              onClick={() => openAuthModal({ tab: 'register', redirect: '/store/account/orders' })}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border-2 border-orange-500 text-orange-500 font-bold hover:bg-orange-50 transition-colors"
+            >
+              Create Account
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -94,7 +115,40 @@ export default function MyOrdersPage() {
           </p>
         </div>
 
-        {loading ? (
+        {/* Session expired error */}
+        {fetchError === 'session_expired' && (
+          <div className="bg-white rounded-2xl border border-orange-100 p-8 text-center">
+            <AlertCircle className="h-12 w-12 text-orange-400 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-gray-800">Session expired</h3>
+            <p className="text-sm text-gray-500 mt-1 mb-5">
+              Your session has expired. Please sign in again to view your orders.
+            </p>
+            <button
+              onClick={logout}
+              className="px-6 py-2.5 rounded-xl bg-orange-500 text-white text-sm font-bold hover:bg-orange-600 transition-colors"
+            >
+              Sign In Again
+            </button>
+          </div>
+        )}
+
+        {/* Network error */}
+        {fetchError === 'network' && (
+          <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center">
+            <RefreshCw className="h-12 w-12 text-gray-300 mx-auto mb-3" />
+            <h3 className="text-base font-semibold text-gray-700">Couldn&apos;t load orders</h3>
+            <p className="text-sm text-gray-400 mt-1 mb-5">Check your connection and try again.</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-2.5 rounded-xl bg-gray-800 text-white text-sm font-bold hover:bg-gray-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
+        {/* Loading skeleton */}
+        {loading && !fetchError && (
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-gray-100 p-5 animate-pulse">
@@ -109,7 +163,10 @@ export default function MyOrdersPage() {
               </div>
             ))}
           </div>
-        ) : orders.length === 0 ? (
+        )}
+
+        {/* Empty state */}
+        {!loading && !fetchError && orders.length === 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 p-12 text-center">
             <ShoppingBag className="h-12 w-12 text-gray-200 mx-auto mb-3" />
             <h3 className="text-base font-semibold text-gray-700">No orders yet</h3>
@@ -121,10 +178,12 @@ export default function MyOrdersPage() {
               Start Shopping
             </a>
           </div>
-        ) : (
+        )}
+
+        {/* Orders list */}
+        {!loading && !fetchError && orders.length > 0 && (
           <div className="space-y-3">
             {orders.map((order) => {
-              const firstImage = order.items[0]?.product?.featuredImageUrl;
               const extraCount = Math.max(0, order.items.length - 3);
 
               return (
@@ -162,7 +221,7 @@ export default function MyOrdersPage() {
 
                     {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <p className="text-sm font-bold text-gray-900">{order.orderNumber}</p>
                         <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${STATUS_STYLES[order.status] ?? 'bg-gray-100 text-gray-600'}`}>
                           {order.status.replace('_', ' ')}

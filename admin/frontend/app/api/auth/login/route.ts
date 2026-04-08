@@ -6,7 +6,7 @@ const IS_PROD = process.env.NODE_ENV === 'production';
 export async function POST(req: NextRequest) {
   const body = await req.json();
 
-  const backendRes = await fetch(`${API_URL}/auth/login`, {
+  const backendRes = await fetch(`${API_URL}/auth/admin/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

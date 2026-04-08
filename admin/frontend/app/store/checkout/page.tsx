@@ -5,8 +5,9 @@ import { useCart } from '../context/cart-context';
 import { useCustomerAuth } from '../context/customer-auth-context';
 import { ShopNavbar } from '../components/shop-navbar';
 import {
-  CreditCard, Truck, Building2, Smartphone, ShoppingBag, Check, ChevronRight, ArrowLeft,
+  CreditCard, Truck, Building2, Smartphone, ShoppingBag, Check, ChevronRight, ArrowLeft, LogIn,
 } from 'lucide-react';
+import { useAuthModal } from '../context/auth-modal-context';
 
 type PaymentMethod = 'CASH_ON_DELIVERY' | 'STRIPE' | 'BANK_TRANSFER' | 'GCASH' | 'PAYMAYA';
 type Step = 'address' | 'payment' | 'review';
@@ -191,6 +192,7 @@ function AddressForm({ value, onChange, title }: {
 export default function CheckoutPage() {
   const { items, subtotal, count, clearCart } = useCart();
   const { customer, token } = useCustomerAuth();
+  const { openAuthModal } = useAuthModal();
 
   const [step, setStep] = useState<Step>('address');
   const [shipping, setShipping] = useState<Address>(
@@ -205,6 +207,45 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [orderResult, setOrderResult] = useState<{ orderNumber: string; id: string } | null>(null);
+
+  if (!customer && !orderResult) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <ShopNavbar />
+        <div className="max-w-sm mx-auto px-4 py-24 text-center">
+          <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-10">
+            <div className="h-16 w-16 rounded-full bg-orange-100 flex items-center justify-center mx-auto mb-5">
+              <LogIn className="h-8 w-8 text-orange-500" />
+            </div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Login Required</h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Please login or create an account to complete your purchase. Your cart will be saved.
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => openAuthModal({ tab: 'login', redirect: '/store/checkout' })}
+                className="w-full py-3 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition-colors flex items-center justify-center gap-2"
+              >
+                <LogIn className="h-4 w-4" /> Login
+              </button>
+              <button
+                onClick={() => openAuthModal({ tab: 'register', redirect: '/store/checkout' })}
+                className="w-full py-3 rounded-xl border-2 border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold transition-colors"
+              >
+                Create Account
+              </button>
+              <a
+                href="/store/cart"
+                className="text-sm text-gray-400 hover:text-gray-600 transition-colors pt-1"
+              >
+                ← Back to Cart
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (count === 0 && !orderResult) {
     return (
@@ -340,7 +381,7 @@ export default function CheckoutPage() {
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       required
-                      placeholder="you@example.com"
+                      placeholder="Enter your email"
                       className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
                     />
                   </div>

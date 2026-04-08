@@ -86,7 +86,7 @@ export default function ContactPage() {
                       value={form.email}
                       onChange={set('email')}
                       required
-                      placeholder="you@example.com"
+                      placeholder="Enter your email"
                       className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
                     />
                   </div>

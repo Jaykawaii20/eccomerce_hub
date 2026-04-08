@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { ShoppingCart, Check, Minus, Plus } from 'lucide-react';
 import { useCart } from '../../context/cart-context';
+import { useCustomerAuth } from '../../context/customer-auth-context';
+import { useAuthModal } from '../../context/auth-modal-context';
+import { useRouter } from 'next/navigation';
 
 interface Variant {
   id: string;
@@ -31,6 +34,10 @@ interface AddToCartProps {
 
 export function AddToCartSection({ product }: AddToCartProps) {
   const { addItem } = useCart();
+  const { customer } = useCustomerAuth();
+  const { openAuthModal } = useAuthModal();
+  const router = useRouter();
+
   const [quantity, setQuantity] = useState(1);
   const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>(
     product.variants.length === 1 ? product.variants[0].id : undefined
@@ -58,8 +65,7 @@ export function AddToCartSection({ product }: AddToCartProps) {
     }
   }
 
-  function handleAddToCart() {
-    if (!inStock) return;
+  function doAddToCart() {
     addItem({
       productId: product.id,
       variantId: selectedVariantId,
@@ -72,6 +78,32 @@ export function AddToCartSection({ product }: AddToCartProps) {
     });
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
+  }
+
+  function handleAddToCart() {
+    if (!inStock) return;
+    if (!customer) {
+      openAuthModal({ tab: 'login', onSuccess: doAddToCart });
+      return;
+    }
+    doAddToCart();
+  }
+
+  function handleBuyNow(e: React.MouseEvent) {
+    e.preventDefault();
+    if (!inStock) return;
+    if (!customer) {
+      openAuthModal({
+        tab: 'login',
+        onSuccess: () => {
+          doAddToCart();
+          router.push('/store/cart');
+        },
+      });
+      return;
+    }
+    doAddToCart();
+    router.push('/store/cart');
   }
 
   return (
@@ -115,7 +147,6 @@ export function AddToCartSection({ product }: AddToCartProps) {
 
       {/* Quantity + Add to Cart */}
       <div className="flex items-center gap-3">
-        {/* Quantity */}
         <div className="flex items-center border border-gray-200 rounded-xl overflow-hidden">
           <button
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
@@ -133,7 +164,6 @@ export function AddToCartSection({ product }: AddToCartProps) {
           </button>
         </div>
 
-        {/* Add to cart */}
         <button
           onClick={handleAddToCart}
           disabled={!inStock || (product.variants.length > 1 && !selectedVariantId)}
@@ -155,13 +185,13 @@ export function AddToCartSection({ product }: AddToCartProps) {
 
       {/* Buy now */}
       {inStock && (
-        <a
-          href="/store/cart"
-          onClick={handleAddToCart}
-          className="block w-full py-3 rounded-xl border-2 border-orange-500 text-orange-500 hover:bg-orange-50 text-sm font-bold text-center transition-colors"
+        <button
+          onClick={handleBuyNow}
+          disabled={product.variants.length > 1 && !selectedVariantId}
+          className="block w-full py-3 rounded-xl border-2 border-orange-500 text-orange-500 hover:bg-orange-50 text-sm font-bold text-center transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
         >
           Buy Now
-        </a>
+        </button>
       )}
 
       {product.variants.length > 1 && !selectedVariantId && (

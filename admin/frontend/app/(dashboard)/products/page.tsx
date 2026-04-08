@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { PageHeader } from '@/components/layout/page-header';
 import { Button } from '@/components/ui/button';
@@ -50,24 +50,44 @@ const STATUS_COLORS: Record<string, 'default' | 'success' | 'secondary' | 'warni
 export default function ProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [status, setStatus] = useState('all');
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  // Debounce search: only update debouncedSearch 350ms after the user stops typing
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   const fetchProducts = useCallback(async () => {
+    // Cancel any in-flight request before starting a new one
+    abortRef.current?.abort();
+    abortRef.current = new AbortController();
+
     setLoading(true);
+    setFetchError(false);
     try {
       const params = new URLSearchParams();
-      if (search) params.set('search', search);
+      if (debouncedSearch) params.set('search', debouncedSearch);
       if (status !== 'all') params.set('status', status);
-      const { data } = await apiClient.get<{ data: Product[] }>(`/products?${params}`);
+      const { data } = await apiClient.get<{ data: Product[] }>(
+        `/products?${params}`,
+        { signal: abortRef.current.signal }
+      );
       setProducts(data.data ?? []);
-    } catch {
-      setProducts([]);
+    } catch (err: unknown) {
+      // Ignore abort errors — they're intentional cancellations
+      if ((err as { code?: string })?.code === 'ERR_CANCELED') return;
+      setFetchError(true);
+      // Keep previous products visible instead of blanking the list
     } finally {
       setLoading(false);
     }
-  }, [search, status]);
+  }, [debouncedSearch, status]);
 
   useEffect(() => {
     fetchProducts();
@@ -120,8 +140,60 @@ export default function ProductsPage() {
         </div>
       </Card>
 
-      {loading ? (
+      {fetchError && (
+        <div className="text-sm text-destructive bg-destructive/10 rounded-lg px-4 py-3 flex items-center gap-2">
+          <span>Failed to load products. Showing last known results.</span>
+          <button onClick={fetchProducts} className="underline font-medium">Retry</button>
+        </div>
+      )}
+
+      {loading && products.length === 0 ? (
         <DataTableSkeleton columns={6} />
+      ) : loading ? (
+        // Keep the table visible with a subtle top-bar spinner while refreshing
+        <div className="space-y-2">
+          <div className="h-1 w-full rounded-full bg-primary/20 overflow-hidden">
+            <div className="h-full bg-primary animate-pulse rounded-full" />
+          </div>
+          <Card>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12"></TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Price</TableHead>
+                  <TableHead>Stock</TableHead>
+                  <TableHead>Created</TableHead>
+                  <TableHead className="w-20"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {products.map((p) => (
+                  <TableRow key={p.id} className="opacity-50">
+                    <TableCell>
+                      {p.featuredImageUrl ? (
+                        <img src={p.featuredImageUrl} alt={p.name} className="h-10 w-10 rounded object-cover" />
+                      ) : (
+                        <div className="h-10 w-10 rounded bg-gray-100 flex items-center justify-center">
+                          <ImageOff className="h-4 w-4 text-gray-400" />
+                        </div>
+                      )}
+                    </TableCell>
+                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="text-muted-foreground font-mono text-xs">{p.sku ?? '—'}</TableCell>
+                    <TableCell><Badge variant={STATUS_COLORS[p.status]}>{p.status}</Badge></TableCell>
+                    <TableCell>{formatCurrency(p.price)}</TableCell>
+                    <TableCell>{p.stockQuantity}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{formatDate(p.createdAt)}</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
       ) : (
         <Card>
           <Table>

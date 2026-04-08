@@ -176,7 +176,7 @@ export default async function StorePage() {
       <div>
         <AnnouncementBar text="Free shipping on orders over $50! Use code FREESHIP" />
         <StorefrontNavbar
-          logoText="ShopHub"
+          logoText=""
           navLinks={[
             { label: 'Home', href: '/store' },
             { label: 'Shop', href: '/shop' },

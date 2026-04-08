@@ -3,6 +3,8 @@
 import { ShoppingCart, Star, Check } from 'lucide-react';
 import { useState } from 'react';
 import { useCart } from '../context/cart-context';
+import { useCustomerAuth } from '../context/customer-auth-context';
+import { useAuthModal } from '../context/auth-modal-context';
 
 interface Product {
   id: string;
@@ -22,6 +24,8 @@ function formatPrice(cents: number) {
 
 function ProductCard({ product }: { product: Product }) {
   const { addItem } = useCart();
+  const { customer } = useCustomerAuth();
+  const { openAuthModal } = useAuthModal();
   const [added, setAdded] = useState(false);
 
   const hasDiscount = product.salePrice != null && product.salePrice < product.price;
@@ -35,6 +39,26 @@ function ProductCard({ product }: { product: Product }) {
     e.preventDefault();
     e.stopPropagation();
     if (!inStock) return;
+
+    if (!customer) {
+      openAuthModal({
+        tab: 'login',
+        onSuccess: () => {
+          addItem({
+            productId: product.id,
+            slug: product.slug,
+            name: product.name,
+            price: effectivePrice,
+            originalPrice: product.price,
+            image: product.featuredImageUrl ?? undefined,
+          });
+          setAdded(true);
+          setTimeout(() => setAdded(false), 1500);
+        },
+      });
+      return;
+    }
+
     addItem({
       productId: product.id,
       slug: product.slug,

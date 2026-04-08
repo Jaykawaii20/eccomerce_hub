@@ -13,6 +13,7 @@ import reviewRoutes from './review.routes';
 import pageBuilderRoutes from './page-builder.routes';
 import navCountsRoutes from './nav-counts.routes';
 import storefrontRoutes from './storefront.routes';
+import usersRoutes from './users.routes';
 
 const router = Router();
 
@@ -30,5 +31,6 @@ router.use('/reviews', reviewRoutes);
 router.use('/page-builder', pageBuilderRoutes);
 router.use('/nav-counts', navCountsRoutes);
 router.use('/storefront', storefrontRoutes);
+router.use('/users', usersRoutes);
 
 export default router;

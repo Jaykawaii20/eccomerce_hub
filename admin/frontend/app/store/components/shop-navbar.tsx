@@ -5,14 +5,16 @@ import { ShoppingCart, User, Menu, X, Search, Package } from 'lucide-react';
 import { useCart } from '../context/cart-context';
 import { useCustomerAuth } from '../context/customer-auth-context';
 import { useStoreConfig } from '../context/store-config-context';
+import { useAuthModal } from '../context/auth-modal-context';
 
 export function ShopNavbar() {
   const { count } = useCart();
   const { customer, logout } = useCustomerAuth();
   const { loaded, primaryColor, navbar } = useStoreConfig();
+  const { openAuthModal } = useAuthModal();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [accountOpen, setAccountOpen] = useState(false);
-
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const { logoText, backgroundColor, textColor, showSearch, showCart, navLinks } = navbar;
 
   return (
@@ -106,7 +108,11 @@ export function ShopNavbar() {
                         My Orders
                       </a>
                       <button
-                        onClick={() => { logout(); setAccountOpen(false); }}
+                        onClick={() => {
+                          setAccountOpen(false);
+                          // Show confirmation modal
+                          setShowSignOutConfirm(true);
+                        }}
                         className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
                       >
                         <User className="h-4 w-4" />
@@ -115,16 +121,65 @@ export function ShopNavbar() {
                     </div>
                   </>
                 )}
+
+                {/* Sign Out Confirmation Modal */}
+                {/* Sign Out Confirmation Modal - MOVED OUTSIDE the dropdown */}
+                {showSignOutConfirm && (
+                  <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    {/* Backdrop */}
+                    <div
+                      className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-opacity duration-300"
+                      onClick={() => setShowSignOutConfirm(false)}
+                    />
+
+                    {/* Modal */}
+                    <div className="relative bg-white rounded-2xl shadow-2xl max-w-sm w-full mx-4 transform transition-all duration-300 animate-in fade-in zoom-in">
+                      {/* Icon */}
+                      <div className="flex justify-center mt-6">
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center">
+                          <User className="w-8 h-8 text-red-500" />
+                        </div>
+                      </div>
+
+                      {/* Content */}
+                      <div className="text-center px-6 pb-6">
+                        <h3 className="text-xl font-bold text-gray-900 mb-2 mt-4">Sign Out?</h3>
+                        <p className="text-gray-500 text-sm mb-6">
+                          Are you sure you want to sign out of your account?
+                        </p>
+
+                        {/* Buttons */}
+                        <div className="flex gap-3">
+                          <button
+                            onClick={() => {
+                              setShowSignOutConfirm(false);
+                              logout();
+                            }}
+                            className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            Sign Out
+                          </button>
+                          <button
+                            onClick={() => setShowSignOutConfirm(false)}
+                            className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold py-2.5 rounded-xl transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98]"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
-              <a
-                href="/store/auth/login"
+              <button
+                onClick={() => openAuthModal({ tab: 'login' })}
                 className="hidden sm:flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white transition-opacity hover:opacity-90"
                 style={{ backgroundColor: primaryColor }}
               >
                 <User className="h-4 w-4" />
                 Sign In
-              </a>
+              </button>
             )}
 
             {/* Mobile menu button */}
@@ -161,9 +216,13 @@ export function ShopNavbar() {
                 </button>
               </>
             ) : (
-              <a href="/store/auth/login" className="block text-sm font-medium py-1" style={{ color: primaryColor }} onClick={() => setMobileOpen(false)}>
+              <button
+                onClick={() => { setMobileOpen(false); openAuthModal({ tab: 'login' }); }}
+                className="block text-sm font-medium py-1 text-left"
+                style={{ color: primaryColor }}
+              >
                 Sign In / Register
-              </a>
+              </button>
             )}
           </div>
         </div>

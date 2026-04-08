@@ -18,10 +18,10 @@ interface FooterProps {
 }
 
 export function StorefrontFooter({
-  logoText = 'ShopHub',
+  logoText = '',
   tagline = 'Your one-stop shop for everything.',
   columns = [],
-  copyright = '© 2026 ShopHub. All rights reserved.',
+  copyright = '© 2026. All rights reserved.',
   backgroundColor = '#111827',
   textColor = '#9ca3af',
 }: FooterProps) {

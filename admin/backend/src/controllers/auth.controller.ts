@@ -19,6 +19,24 @@ export const authController = {
     sendSuccess(res, { data: result.value, status: 201 });
   }),
 
+  adminLogin: asyncHandler(async (req: Request, res: Response) => {
+    const input = loginSchema.parse(req.body);
+    const result = await authService.adminLogin(input);
+    if (result.isErr()) {
+      sendError(res, { code: result.error.code, message: result.error.message, status: result.error.httpStatus });
+      return;
+    }
+
+    res.cookie('refreshToken', result.value.tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env['NODE_ENV'] === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    sendSuccess(res, { data: result.value });
+  }),
+
   login: asyncHandler(async (req: Request, res: Response) => {
     const input = loginSchema.parse(req.body);
     const result = await authService.login(input);

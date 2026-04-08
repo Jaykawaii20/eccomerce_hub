@@ -1,7 +1,9 @@
 'use client';
 
-import { Trash2, Plus, Minus, ShoppingBag, ArrowRight } from 'lucide-react';
+import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, LogIn } from 'lucide-react';
 import { useCart } from '../context/cart-context';
+import { useCustomerAuth } from '../context/customer-auth-context';
+import { useAuthModal } from '../context/auth-modal-context';
 import { ShopNavbar } from '../components/shop-navbar';
 
 function formatPrice(cents: number) {
@@ -10,6 +12,8 @@ function formatPrice(cents: number) {
 
 export default function CartPage() {
   const { items, subtotal, count, removeItem, updateQuantity, clearCart } = useCart();
+  const { customer } = useCustomerAuth();
+  const { openAuthModal } = useAuthModal();
 
   if (count === 0) {
     return (
@@ -139,12 +143,33 @@ export default function CartPage() {
                 </div>
               </div>
 
-              <a
-                href="/store/checkout"
-                className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition-colors"
-              >
-                Proceed to Checkout <ArrowRight className="h-4 w-4" />
-              </a>
+              {customer ? (
+                <a
+                  href="/store/checkout"
+                  className="mt-6 w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition-colors"
+                >
+                  Proceed to Checkout <ArrowRight className="h-4 w-4" />
+                </a>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  <div className="bg-orange-50 border border-orange-100 rounded-xl p-3 text-center">
+                    <p className="text-sm text-orange-700 font-medium">Login required to checkout</p>
+                    <p className="text-xs text-orange-500 mt-0.5">Your cart is saved — login to continue</p>
+                  </div>
+                  <button
+                    onClick={() => openAuthModal({ tab: 'login', redirect: '/store/checkout' })}
+                    className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-orange-500 hover:bg-orange-600 text-white font-bold transition-colors"
+                  >
+                    <LogIn className="h-4 w-4" /> Login to Checkout
+                  </button>
+                  <button
+                    onClick={() => openAuthModal({ tab: 'register', redirect: '/store/checkout' })}
+                    className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border-2 border-orange-500 text-orange-500 hover:bg-orange-50 font-semibold transition-colors text-sm"
+                  >
+                    Create an Account
+                  </button>
+                </div>
+              )}
 
               <a
                 href="/store/products"

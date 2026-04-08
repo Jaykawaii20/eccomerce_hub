@@ -1,11 +1,11 @@
 import { Result, ok, err } from 'neverthrow';
 import { Product, Category } from '@prisma/client';
-import { IProductRepository } from '../repositories/product.repository';
+import { IProductRepository, ProductListItem } from '../repositories/product.repository';
 import { DomainError, Errors } from '../utils/result';
 import { CreateProductInput, UpdateProductInput, ListProductsInput } from '../validators/product.validator';
 
 export interface ProductListResult {
-  data: Product[];
+  data: ProductListItem[];
   total: number;
 }
 
@@ -27,7 +27,10 @@ export class ProductService {
 
   async create(input: CreateProductInput, _userId: string): Promise<Result<Product, DomainError>> {
     const existing = await this.productRepo.findBySlug(input.slug);
-    if (existing) {
+    // Block only when an active (non-deleted) product already owns this slug.
+    // Soft-deleted rows still hold the DB constraint, so the repository's
+    // transaction will auto-suffix the slug (e.g. "my-slug-1") in that case.
+    if (existing && existing.deletedAt === null) {
       return err(Errors.CONFLICT(`A product with slug "${input.slug}" already exists.`));
     }
     const product = await this.productRepo.create(input);

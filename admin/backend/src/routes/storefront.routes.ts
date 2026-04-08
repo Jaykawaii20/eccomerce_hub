@@ -338,11 +338,32 @@ router.post('/checkout', asyncHandler(async (req, res) => {
   const total = Math.max(0, subtotal - discountAmount);
   const billing = billingAddress ?? shippingAddress;
 
-  // Find user by email (optional — guest checkout allowed)
-  const user = await prisma.user.findFirst({
-    where: { email: customerEmail, deletedAt: null },
-    select: { id: true },
-  });
+  // Resolve the user: prefer the authenticated session (Bearer token) over email lookup.
+  // This guarantees orders are always linked to the right account even if the email
+  // in the form differs in casing or is slightly different.
+  let user: { id: string } | null = null;
+  const checkoutAuthHeader = req.headers.authorization;
+  if (checkoutAuthHeader?.startsWith('Bearer ')) {
+    try {
+      const { supabaseAdmin } = await import('../config/supabase');
+      const { data: { user: sbUser } } = await supabaseAdmin.auth.getUser(checkoutAuthHeader.slice(7));
+      if (sbUser) {
+        const dbUser = await prisma.user.findFirst({
+          where: { supabaseId: sbUser.id, deletedAt: null },
+          select: { id: true },
+        });
+        user = dbUser ?? null;
+      }
+    } catch { /* fall through to email lookup */ }
+  }
+
+  // Fall back to email lookup if no valid token was present (guest checkout)
+  if (!user) {
+    user = await prisma.user.findFirst({
+      where: { email: { equals: customerEmail, mode: 'insensitive' }, deletedAt: null },
+      select: { id: true },
+    });
+  }
 
   const order = await prisma.$transaction(async (tx) => {
     const created = await tx.order.create({
@@ -379,23 +400,22 @@ router.post('/checkout', asyncHandler(async (req, res) => {
       },
     });
 
-    // Deduct stock
-    for (const item of items) {
-      const product = products.find((p) => p.id === item.productId);
-      if (product?.manageStock) {
-        if (item.variantId) {
-          await tx.productVariant.update({
-            where: { id: item.variantId },
-            data: { stockQuantity: { decrement: item.quantity } },
-          });
-        } else {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stockQuantity: { decrement: item.quantity } },
-          });
-        }
-      }
-    }
+    // Deduct stock in parallel
+    await Promise.all(
+      items
+        .filter((item) => products.find((p) => p.id === item.productId)?.manageStock)
+        .map((item) =>
+          item.variantId
+            ? tx.productVariant.update({
+                where: { id: item.variantId },
+                data: { stockQuantity: { decrement: item.quantity } },
+              })
+            : tx.product.update({
+                where: { id: item.productId },
+                data: { stockQuantity: { decrement: item.quantity } },
+              })
+        )
+    );
 
     // Record coupon usage
     if (coupon && user) {
@@ -405,7 +425,7 @@ router.post('/checkout', asyncHandler(async (req, res) => {
     }
 
     return created;
-  });
+  }, { timeout: 30000 });
 
   res.status(201).json({ success: true, data: order });
 }));
@@ -481,13 +501,15 @@ router.get('/orders/:ref', asyncHandler(async (req, res) => {
 
   const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(ref);
 
-  // If authenticated: match by id OR orderNumber for that user
-  // If guest: match by orderNumber only (no user restriction so anyone with the order number can view)
+  // Lookup strategy:
+  // - By UUID: restrict to the authenticated user's order (security — UUIDs are guessable via brute force)
+  // - By orderNumber: no userId restriction — anyone with the order number can track it (guest + pre-fix orders)
   const order = await prisma.order.findFirst({
     where: {
-      ...(isUUID ? { id: ref } : { orderNumber: ref }),
+      ...(isUUID
+        ? { id: ref, ...(userId ? { userId } : {}) }
+        : { orderNumber: ref }),
       deletedAt: null,
-      ...(userId ? { userId } : {}),
     },
     select: {
       id: true,

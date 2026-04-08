@@ -43,7 +43,7 @@ export default function CustomerLoginPage() {
         <div className="w-full max-w-md">
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8">
             <div className="text-center mb-8">
-              <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Welcome</h1>
               <p className="text-sm text-gray-500 mt-1">Sign in to your account</p>
             </div>
 
@@ -61,7 +61,7 @@ export default function CustomerLoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="you@example.com"
+                  placeholder="Enter your email"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
                 />
               </div>
@@ -72,7 +72,7 @@ export default function CustomerLoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  placeholder="••••••••"
+                  placeholder="Enter your password"
                   className="w-full px-4 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
                 />
               </div>

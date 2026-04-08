@@ -54,10 +54,10 @@ export default function LoginPage() {
         transition={{ duration: 0.5 }}
       >
         <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-          Sign in to your account
+          Admin Portal Sign In
         </h2>
         <p className="text-gray-500 dark:text-gray-400 mb-6">
-          Enter your credentials to access your dashboard
+          This portal is for administrators only. Customer accounts cannot log in here.
         </p>
       </motion.div>
 
@@ -159,6 +159,17 @@ export default function LoginPage() {
         >
           {submitting ? 'Signing in...' : 'Sign in'}
         </Button>
+
+        {/* Go to Store */}
+        <p className="text-center text-sm text-gray-500 dark:text-gray-400">
+          Looking for the customer store?{' '}
+          <a
+            href="/store"
+            className="text-orange-500 hover:text-orange-600 font-semibold transition-colors"
+          >
+            Go to Store →
+          </a>
+        </p>
       </motion.form>
     </>
   );

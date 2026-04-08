@@ -1,61 +1,27 @@
-import { supabase } from './supabase'; 
+import { supabase } from './supabase';
 
-export async function uploadProductImage(file: File) {
-  try {
-    // Validate file
-    if (!file) throw new Error('No file provided');
-    
-    // Check authentication
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError) throw sessionError;
-    if (!session) throw new Error('User not authenticated');
+export async function uploadProductImage(file: File): Promise<string> {
+  if (!file) throw new Error('No file provided');
 
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `products/${fileName}`;
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!session) throw new Error('User not authenticated');
 
-    // Upload file
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('Product')
-      .upload(filePath, file, {
-        contentType: file.type,
-        cacheControl: '3600',
-        upsert: false,
-      });
+  const fileExt = file.name.split('.').pop() ?? 'jpg';
+  const filePath = `products/${Date.now()}-${Math.random().toString(36).slice(2)}.${fileExt}`;
 
-    if (uploadError) throw uploadError;
+  const { error: uploadError } = await supabase.storage
+    .from('Product')
+    .upload(filePath, file, {
+      contentType: file.type,
+      cacheControl: '31536000', // 1 year — images are immutable (new path on each upload)
+      upsert: false,
+    });
 
-    // Check if bucket is public
-    const { data: bucketData } = await supabase
-      .from('storage.buckets')
-      .select('public')
-      .eq('name', 'Product')
-      .single();
+  if (uploadError) throw uploadError;
 
-    let fileUrl;
-    
-    if (bucketData?.public) {
-      // Public bucket - use public URL
-      const { data: urlData } = supabase.storage
-        .from('Product')
-        .getPublicUrl(filePath);
-      fileUrl = urlData.publicUrl;
-    } else {
-      // Private bucket - use signed URL (valid for 1 hour)
-      const { data: signedUrlData, error: signedUrlError } = await supabase.storage
-        .from('Product')
-        .createSignedUrl(filePath, 3600); // 1 hour
-      
-      if (signedUrlError) throw signedUrlError;
-      fileUrl = signedUrlData.signedUrl;
-    }
-
-    console.log("FILE URL:", fileUrl);
-    return fileUrl;
-
-  } catch (err: any) {
-    console.error("Upload error:", err.message);
-    throw err;
-  }
+  // getPublicUrl returns a permanent, non-expiring URL for public buckets.
+  // Product images must always be publicly accessible (shown to all store visitors).
+  const { data } = supabase.storage.from('Product').getPublicUrl(filePath);
+  return data.publicUrl;
 }

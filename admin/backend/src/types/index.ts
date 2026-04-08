@@ -59,6 +59,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, Permission[]> = {
     'settings:read',
     'reports:read',
     'media:read', 'media:write', 'media:delete',
+    'users:read', 'users:write',
   ],
   MANAGER: [
     'products:read', 'products:write',

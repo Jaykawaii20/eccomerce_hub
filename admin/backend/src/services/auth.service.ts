@@ -88,6 +88,38 @@ export class AuthService {
     });
   }
 
+  /** Admin panel login — rejects CUSTOMER role accounts. */
+  async adminLogin(input: LoginInput): Promise<Result<AuthResult, DomainError>> {
+    const { data, error } = await supabaseAdmin.auth.signInWithPassword({
+      email: input.email,
+      password: input.password,
+    });
+
+    if (error || !data.session) {
+      return err({ code: 'INVALID_CREDENTIALS', message: 'Invalid email or password.', httpStatus: 401 });
+    }
+
+    const user = await this.userRepo.findBySupabaseId(data.user.id);
+    if (!user || !user.isActive) {
+      return err(Errors.FORBIDDEN);
+    }
+
+    if (user.role === 'CUSTOMER') {
+      // Sign them back out so the session isn't left open
+      await supabaseAdmin.auth.admin.signOut(data.session.access_token).catch(() => null);
+      return err({ code: 'FORBIDDEN', message: 'Access denied. This portal is for administrators only.', httpStatus: 403 });
+    }
+
+    return ok({
+      user: { id: user.id, email: user.email, firstName: user.firstName, lastName: user.lastName, role: user.role },
+      tokens: {
+        accessToken: data.session.access_token,
+        refreshToken: data.session.refresh_token,
+        expiresIn: data.session.expires_in,
+      },
+    });
+  }
+
   async logout(accessToken: string): Promise<Result<void, DomainError>> {
     const { error } = await supabaseAdmin.auth.admin.signOut(accessToken);
     if (error) {

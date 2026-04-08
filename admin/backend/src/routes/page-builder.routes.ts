@@ -67,7 +67,7 @@ function getDefaultConfig() {
     globalStyles: {
       primaryColor: '#f97316',
       storeName: 'My Store',
-      logoText: 'ShopHub',
+      logoText: '',
     },
     sections: [
       {
@@ -88,7 +88,7 @@ function getDefaultConfig() {
         enabled: true,
         order: 1,
         props: {
-          logoText: 'ShopHub',
+          logoText: '',
           navLinks: [
             { label: 'Home', href: '/store' },
             { label: 'Shop', href: '/store/products' },
@@ -207,7 +207,7 @@ function getDefaultConfig() {
         enabled: true,
         order: 9,
         props: {
-          logoText: 'ShopHub',
+          logoText: '',
           tagline: 'Your one-stop shop for everything.',
           columns: [
             {
@@ -235,7 +235,7 @@ function getDefaultConfig() {
               ],
             },
           ],
-          copyright: '© 2026 ShopHub. All rights reserved.',
+          copyright: '© 2026. All rights reserved.',
           backgroundColor: '#111827',
           textColor: '#9ca3af',
         },

@@ -26,6 +26,7 @@ import {
   Store,
   HelpCircle,
   Paintbrush,
+  ShieldCheck,
 } from 'lucide-react';
 
 // ─── Nav structure (badges are keys into NavCounts, not static strings) ────────
@@ -50,6 +51,7 @@ const mainNavItems: NavItemDef[] = [
   { href: '/products', label: 'Products', icon: Package, countKey: 'products' },
   { href: '/orders', label: 'Orders', icon: ShoppingCart, countKey: 'pendingOrders' },
   { href: '/customers', label: 'Customers', icon: Users },
+  { href: '/users', label: 'User Management', icon: ShieldCheck },
 ];
 
 const catalogNavItems: NavItemDef[] = [
