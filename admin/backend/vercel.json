@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "buildCommand": "npx prisma generate && npx tsc -p tsconfig.build.json",
+  "outputDirectory": ".",
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/api" }
+  ],
+  "functions": {
+    "api/index.ts": {
+      "maxDuration": 30
+    }
+  }
+}
