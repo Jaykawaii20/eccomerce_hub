@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCart } from '../context/cart-context';
 import { useCustomerAuth } from '../context/customer-auth-context';
 import { ShopNavbar } from '../components/shop-navbar';
@@ -56,16 +56,49 @@ interface Address {
   lastName: string;
   address1: string;
   address2: string;
-  city: string;
-  state: string;
+  region: string;
+  regionCode: string;
+  province: string;
+  provinceCode: string;
+  cityMunicipality: string;
+  cityMunicipalityCode: string;
+  barangay: string;
+  barangayCode: string;
   postalCode: string;
   country: string;
   phone: string;
 }
 
+interface Region {
+  code: string;
+  name: string;
+  regionName: string;
+}
+
+interface Province {
+  code: string;
+  name: string;
+  regionCode: string;
+}
+
+interface CityMunicipality {
+  code: string;
+  name: string;
+  provinceCode: string;
+}
+
+interface Barangay {
+  code: string;
+  name: string;
+  cityCode: string;
+}
+
 const emptyAddress: Address = {
   firstName: '', lastName: '', address1: '', address2: '',
-  city: '', state: '', postalCode: '', country: 'PH', phone: '',
+  region: '', regionCode: '', province: '', provinceCode: '',
+  cityMunicipality: '', cityMunicipalityCode: '',
+  barangay: '', barangayCode: '',
+  postalCode: '', country: 'PH', phone: '',
 };
 
 function StepIndicator({ current }: { current: Step }) {
@@ -100,9 +133,149 @@ function AddressForm({ value, onChange, title }: {
   onChange: (a: Address) => void;
   title: string;
 }) {
+  const [regions, setRegions] = useState<Region[]>([]);
+  const [provinces, setProvinces] = useState<Province[]>([]);
+  const [citiesMunicipalities, setCitiesMunicipalities] = useState<CityMunicipality[]>([]);
+  const [barangays, setBarangays] = useState<Barangay[]>([]);
+  
+  const [loadingRegions, setLoadingRegions] = useState(true);
+  const [loadingProvinces, setLoadingProvinces] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [loadingBarangays, setLoadingBarangays] = useState(false);
+
+  // Fetch regions on mount
+  useEffect(() => {
+    const fetchRegions = async () => {
+      try {
+        const response = await fetch('https://psgc.gitlab.io/api/regions/');
+        const data = await response.json();
+        setRegions(data);
+      } catch (error) {
+        console.error('Error fetching regions:', error);
+      } finally {
+        setLoadingRegions(false);
+      }
+    };
+    fetchRegions();
+  }, []);
+
+  // Fetch provinces when region changes
+  useEffect(() => {
+    if (value.regionCode) {
+      const fetchProvinces = async () => {
+        setLoadingProvinces(true);
+        try {
+          const response = await fetch(`https://psgc.gitlab.io/api/regions/${value.regionCode}/provinces/`);
+          const data = await response.json();
+          setProvinces(data);
+        } catch (error) {
+          console.error('Error fetching provinces:', error);
+        } finally {
+          setLoadingProvinces(false);
+        }
+      };
+      fetchProvinces();
+      // Reset dependent fields
+      onChange({ ...value, province: '', provinceCode: '', cityMunicipality: '', cityMunicipalityCode: '', barangay: '', barangayCode: '' });
+    } else {
+      setProvinces([]);
+    }
+  }, [value.regionCode]);
+
+  // Fetch cities/municipalities when province changes
+  useEffect(() => {
+    if (value.provinceCode) {
+      const fetchCities = async () => {
+        setLoadingCities(true);
+        try {
+          const response = await fetch(`https://psgc.gitlab.io/api/provinces/${value.provinceCode}/cities-municipalities/`);
+          const data = await response.json();
+          setCitiesMunicipalities(data);
+        } catch (error) {
+          console.error('Error fetching cities/municipalities:', error);
+        } finally {
+          setLoadingCities(false);
+        }
+      };
+      fetchCities();
+      // Reset dependent fields
+      onChange({ ...value, cityMunicipality: '', cityMunicipalityCode: '', barangay: '', barangayCode: '' });
+    } else {
+      setCitiesMunicipalities([]);
+    }
+  }, [value.provinceCode]);
+
+  // Fetch barangays when city/municipality changes
+  useEffect(() => {
+    if (value.cityMunicipalityCode) {
+      const fetchBarangays = async () => {
+        setLoadingBarangays(true);
+        try {
+          const response = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${value.cityMunicipalityCode}/barangays/`);
+          const data = await response.json();
+          setBarangays(data);
+        } catch (error) {
+          console.error('Error fetching barangays:', error);
+        } finally {
+          setLoadingBarangays(false);
+        }
+      };
+      fetchBarangays();
+      onChange({ ...value, barangay: '', barangayCode: '' });
+    } else {
+      setBarangays([]);
+    }
+  }, [value.cityMunicipalityCode]);
+
   function set(key: keyof Address) {
     return (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
       onChange({ ...value, [key]: e.target.value });
+  }
+
+  function handleRegionChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const selectedCode = e.target.value;
+    const selectedRegion = regions.find(r => r.code === selectedCode);
+    onChange({ 
+      ...value, 
+      regionCode: selectedCode, 
+      region: selectedRegion?.name || '',
+      province: '', provinceCode: '',
+      cityMunicipality: '', cityMunicipalityCode: '',
+      barangay: '', barangayCode: ''
+    });
+  }
+
+  function handleProvinceChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const selectedCode = e.target.value;
+    const selectedProvince = provinces.find(p => p.code === selectedCode);
+    onChange({ 
+      ...value, 
+      provinceCode: selectedCode, 
+      province: selectedProvince?.name || '',
+      cityMunicipality: '', cityMunicipalityCode: '',
+      barangay: '', barangayCode: ''
+    });
+  }
+
+  function handleCityChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const selectedCode = e.target.value;
+    const selectedCity = citiesMunicipalities.find(c => c.code === selectedCode);
+    onChange({ 
+      ...value, 
+      cityMunicipalityCode: selectedCode, 
+      cityMunicipality: selectedCity?.name || '',
+      barangay: '', barangayCode: ''
+    });
+  }
+
+  function handleBarangayChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const selectedCode = e.target.value;
+    const selectedBarangay = barangays.find(b => b.code === selectedCode);
+    onChange({ 
+      ...value, 
+      barangayCode: selectedCode, 
+      barangay: selectedBarangay?.name || ''
+    });
   }
 
   return (
@@ -128,7 +301,7 @@ function AddressForm({ value, onChange, title }: {
 
       <div className="mt-3 space-y-3">
         <div>
-          <label className="block text-xs font-medium text-gray-600 mb-1">Address line 1</label>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Address line 1 (House/Unit No., Street)</label>
           <input
             value={value.address1}
             onChange={set('address1')}
@@ -142,34 +315,96 @@ function AddressForm({ value, onChange, title }: {
           <input
             value={value.address2}
             onChange={set('address2')}
-            placeholder="Barangay, Subdivision"
+            placeholder="Building, Subdivision, etc."
             className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
           />
         </div>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { key: 'city' as const, label: 'City', placeholder: 'Manila' },
-            { key: 'state' as const, label: 'Province / Region', placeholder: 'Metro Manila' },
-          ].map(({ key, label, placeholder }) => (
-            <div key={key}>
-              <label className="block text-xs font-medium text-gray-600 mb-1">{label}</label>
-              <input
-                value={value[key]}
-                onChange={set(key)}
-                required
-                placeholder={placeholder}
-                className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
-              />
-            </div>
-          ))}
+
+        {/* Region Selection */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Region *</label>
+          <select
+            value={value.regionCode}
+            onChange={handleRegionChange}
+            required
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 bg-white"
+          >
+            <option value="">Select Region</option>
+            {regions.map((region) => (
+              <option key={region.code} value={region.code}>
+                {region.name}
+              </option>
+            ))}
+          </select>
+          {loadingRegions && <p className="text-xs text-gray-400 mt-1">Loading regions...</p>}
         </div>
+
+        {/* Province Selection */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Province *</label>
+          <select
+            value={value.provinceCode}
+            onChange={handleProvinceChange}
+            required
+            disabled={!value.regionCode}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">Select Province</option>
+            {provinces.map((province) => (
+              <option key={province.code} value={province.code}>
+                {province.name}
+              </option>
+            ))}
+          </select>
+          {loadingProvinces && <p className="text-xs text-gray-400 mt-1">Loading provinces...</p>}
+        </div>
+
+        {/* City/Municipality Selection */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">City / Municipality *</label>
+          <select
+            value={value.cityMunicipalityCode}
+            onChange={handleCityChange}
+            required
+            disabled={!value.provinceCode}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">Select City/Municipality</option>
+            {citiesMunicipalities.map((city) => (
+              <option key={city.code} value={city.code}>
+                {city.name}
+              </option>
+            ))}
+          </select>
+          {loadingCities && <p className="text-xs text-gray-400 mt-1">Loading cities/municipalities...</p>}
+        </div>
+
+        {/* Barangay Selection */}
+        <div>
+          <label className="block text-xs font-medium text-gray-600 mb-1">Barangay *</label>
+          <select
+            value={value.barangayCode}
+            onChange={handleBarangayChange}
+            required
+            disabled={!value.cityMunicipalityCode}
+            className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+          >
+            <option value="">Select Barangay</option>
+            {barangays.map((barangay) => (
+              <option key={barangay.code} value={barangay.code}>
+                {barangay.name}
+              </option>
+            ))}
+          </select>
+          {loadingBarangays && <p className="text-xs text-gray-400 mt-1">Loading barangays...</p>}
+        </div>
+
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-xs font-medium text-gray-600 mb-1">ZIP / Postal code</label>
             <input
               value={value.postalCode}
               onChange={set('postalCode')}
-              required
               placeholder="1000"
               className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500"
             />
@@ -497,7 +732,8 @@ export default function CheckoutPage() {
                     </div>
                     <p className="text-sm font-semibold text-gray-900">{shipping.firstName} {shipping.lastName}</p>
                     <p className="text-sm text-gray-600">{shipping.address1}{shipping.address2 ? `, ${shipping.address2}` : ''}</p>
-                    <p className="text-sm text-gray-600">{shipping.city}, {shipping.state} {shipping.postalCode}</p>
+                    <p className="text-sm text-gray-600">{shipping.barangay}, {shipping.cityMunicipality}, {shipping.province}</p>
+                    <p className="text-sm text-gray-600">{shipping.region} {shipping.postalCode}</p>
                     <p className="text-sm text-gray-600">{email}</p>
                   </div>
 

@@ -35,7 +35,7 @@ const nextConfig = {
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https://*.supabase.co http://localhost:4000",
-              "connect-src 'self' https://*.supabase.co https://eccomerce-hub.vercel.app http://localhost:4000 http://localhost:3000",
+              "connect-src 'self' https://*.supabase.co https://eccomerce-hub.vercel.app http://localhost:4000 http://localhost:3000 https://psgc.gitlab.io",
             ].join('; '),
           },
         ],
